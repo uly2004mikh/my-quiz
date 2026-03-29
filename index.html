@@ -149,22 +149,6 @@
             color: rgba(255,255,255,0.6);
         }
         
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
         img {
             pointer-events: none;
         }
@@ -250,12 +234,9 @@
         
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
         
-        // ========== ТВОЯ ССЫЛКА ИЗ GOOGLE SCRIPT ==========
+        // ========== ТВОИ ДАННЫЕ (УЖЕ ВСТАВЛЕНЫ!) ==========
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ6BueyudyoJ5Uf9ySn-4wolobxQq-qgQIR4KDsWoOf9sbREigjiPW5kj_7yk_tqrA/exec";
-        
-        // ID твоей Google Таблицы (нужно добавить!)
-        // Открой таблицу и скопируй ID из адресной строки
-        const SPREADSHEET_ID = "ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ";
+        const SPREADSHEET_ID = "1QX924wqJja0kIrI7Tf1-jQX9K8de5F22TN7qjGjjino";
         
         let userAnswers = {};
         
@@ -359,16 +340,12 @@
         async function showResults() {
             const res = calculateResults();
             
-            // Показываем загрузку
             const btn = document.getElementById('submit-btn');
-            const originalText = btn.textContent;
             btn.textContent = '📤 Сохранение...';
             btn.disabled = true;
             
-            // Сохраняем в Google Sheets
             await saveToGoogleSheets(res);
             
-            // Показываем результат
             btn.style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
@@ -390,7 +367,6 @@
                 return;
             }
             
-            // Открываем таблицу в новой вкладке
             window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`);
         }
         
