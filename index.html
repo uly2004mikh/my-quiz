@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Интерактивный опросник</title>
     <style>
-        /* Весь твой CSS остается таким же, как был */
         * {
             margin: 0;
             padding: 0;
@@ -140,20 +139,17 @@
             margin: 15px 0;
         }
         
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
+        .admin-link {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .admin-link:hover {
+            color: rgba(255,255,255,0.6);
         }
         
         img {
@@ -191,9 +187,11 @@
         
         <div id="result-container"></div>
     </div>
+    
+    <a href="?admin=true" class="admin-link">🔒 Админ-панель</a>
 
     <script>
-        // ЗАЩИТА ОТ КОПИРОВАНИЯ
+        // Защита от копирования
         document.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             return false;
@@ -240,9 +238,155 @@
             }
         ];
         
-        // ========== НАСТРОЙКИ ДЛЯ GOOGLE SHEETS ==========
-        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ GOOGLE FORMS
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/ТВОЙ_ИД/exec";
+        // Ключ для админ-панели (придумай свой секретный пароль)
+        const ADMIN_PASSWORD = "мойсекретныйпароль2024";
+        
+        // Хранилище результатов (в localStorage)
+        let results = [];
+        
+        // Загрузка сохраненных результатов
+        function loadResults() {
+            const saved = localStorage.getItem('quiz_results');
+            if (saved) {
+                results = JSON.parse(saved);
+            }
+        }
+        
+        // Сохранение результата
+        function saveResult(resultData) {
+            results.push({
+                timestamp: new Date().toLocaleString('ru-RU'),
+                ...resultData
+            });
+            localStorage.setItem('quiz_results', JSON.stringify(results));
+        }
+        
+        // Показать админ-панель
+        function showAdminPanel() {
+            const password = prompt("Введите пароль администратора:");
+            if (password !== ADMIN_PASSWORD) {
+                alert("Неверный пароль!");
+                return false;
+            }
+            
+            loadResults();
+            
+            if (results.length === 0) {
+                alert("Пока нет результатов");
+                return;
+            }
+            
+            // Формируем отчет
+            let report = "📊 СТАТИСТИКА ОПРОСНИКА 📊\n\n";
+            report += `Всего ответов: ${results.length}\n`;
+            report += "=" .repeat(40) + "\n\n";
+            
+            results.forEach((res, idx) => {
+                report += `📌 Результат #${idx + 1}\n`;
+                report += `🕐 Время: ${res.timestamp}\n`;
+                report += `📈 Баллы: ${res.score}/${res.total}\n`;
+                report += `🎯 Процент: ${res.percentage}%\n\n`;
+                report += `📝 Ответы:\n`;
+                res.details.forEach((detail, qIdx) => {
+                    report += `  ${qIdx + 1}. ${detail.question}\n`;
+                    report += `     Ответ: ${detail.userAnswer}\n`;
+                    report += `     ${detail.isCorrect ? '✅ Правильно' : '❌ Неправильно (правильно: ' + detail.correctAnswer + ')'}\n`;
+                });
+                report += "\n" + "-".repeat(40) + "\n\n";
+            });
+            
+            // Создаем окно с результатами
+            const adminWindow = window.open();
+            adminWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Админ-панель опросника</title>
+                    <style>
+                        body {
+                            font-family: monospace;
+                            padding: 20px;
+                            background: #f5f5f5;
+                        }
+                        .result {
+                            background: white;
+                            border-radius: 10px;
+                            padding: 15px;
+                            margin-bottom: 20px;
+                            border-left: 4px solid #4CAF50;
+                        }
+                        .result-header {
+                            font-weight: bold;
+                            margin-bottom: 10px;
+                            color: #333;
+                        }
+                        .details {
+                            margin-top: 10px;
+                            padding-left: 20px;
+                        }
+                        .correct {
+                            color: #4CAF50;
+                        }
+                        .wrong {
+                            color: #f44336;
+                        }
+                        button {
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            margin: 10px 0;
+                        }
+                        button:hover {
+                            background: #45a049;
+                        }
+                        hr {
+                            margin: 20px 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>📊 Админ-панель опросника</h1>
+                    <p>Всего ответов: ${results.length}</p>
+                    <button onclick="window.print()">🖨️ Распечатать</button>
+                    <button onclick="copyToClipboard()">📋 Скопировать</button>
+                    <hr>
+                    <div id="results"></div>
+                    <script>
+                        const results = ${JSON.stringify(results)};
+                        const container = document.getElementById('results');
+                        results.forEach((res, idx) => {
+                            const div = document.createElement('div');
+                            div.className = 'result';
+                            div.innerHTML = \`
+                                <div class="result-header">
+                                    🏆 Результат #\${idx + 1} | \${res.timestamp}
+                                </div>
+                                <div>📈 Баллы: \${res.score}/\${res.total} (\${res.percentage}%)</div>
+                                <div class="details">
+                                    <strong>Ответы:</strong><br>
+                                    \${res.details.map((d, i) => 
+                                        \`\${i + 1}. \${d.question}<br>
+                                        &nbsp;&nbsp;Ответ: \${d.userAnswer}<br>
+                                        &nbsp;&nbsp;<span class="\${d.isCorrect ? 'correct' : 'wrong'}">\${d.isCorrect ? '✅ Правильно' : '❌ Неправильно (правильно: ' + d.correctAnswer + ')'}</span><br>\`
+                                    ).join('')}
+                                </div>
+                            \`;
+                            container.appendChild(div);
+                        });
+                        
+                        function copyToClipboard() {
+                            const text = document.body.innerText;
+                            navigator.clipboard.writeText(text);
+                            alert('Скопировано в буфер обмена!');
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+        }
         
         document.getElementById('total-count').textContent = questions.length;
         let userAnswers = {};
@@ -297,11 +441,11 @@
         
         function calculateResults() {
             let correct = 0;
-            let answers = [];
+            let details = [];
             questions.forEach(q => {
                 const isCorrect = userAnswers[q.id] === q.correct;
                 if (isCorrect) correct++;
-                answers.push({
+                details.push({
                     question: q.text,
                     userAnswer: q.options[userAnswers[q.id]] || "Не отвечен",
                     correctAnswer: q.options[q.correct],
@@ -311,60 +455,28 @@
             return { 
                 correct, 
                 total: questions.length, 
-                percent: (correct / questions.length * 100).toFixed(1),
-                answers: answers
+                percentage: (correct / questions.length * 100).toFixed(1),
+                details: details,
+                score: `${correct}/${questions.length}`
             };
-        }
-        
-        // ОТПРАВКА В GOOGLE SHEETS
-        async function saveToGoogleSheets(result) {
-            try {
-                const data = {
-                    timestamp: new Date().toLocaleString('ru-RU'),
-                    score: `${result.correct}/${result.total}`,
-                    percentage: result.percent + '%',
-                    answers: JSON.stringify(result.answers)
-                };
-                
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                console.log('Результаты сохранены!');
-                return true;
-            } catch (error) {
-                console.error('Ошибка сохранения:', error);
-                return false;
-            }
         }
         
         async function showResults() {
             const res = calculateResults();
             
-            // Показываем загрузку
-            const submitBtn = document.getElementById('submit-btn');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = '📤 Сохранение результатов...';
-            submitBtn.disabled = true;
+            // Сохраняем результат
+            saveResult(res);
             
-            // Сохраняем в Google Таблицу
-            await saveToGoogleSheets(res);
-            
-            // Восстанавливаем кнопку и показываем результат
-            submitBtn.style.display = 'none';
+            // Показываем результат
+            document.getElementById('submit-btn').style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
             document.getElementById('result-container').innerHTML = `
                 <div class="result-card">
                     <h2>🎉 Ваш результат 🎉</h2>
                     <div class="score">${res.correct} / ${res.total}</div>
-                    <div class="percentage">${res.percent}% правильных ответов</div>
-                    <p style="margin: 15px 0; color: #666;">✨ Результат сохранен! ✨</p>
+                    <div class="percentage">${res.percentage}% правильных ответов</div>
+                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен!</p>
                     <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer;">🔄 Пройти снова</button>
                 </div>
             `;
@@ -378,7 +490,13 @@
             showResults();
         };
         
+        // Проверяем, не зашли ли в админ-панель
+        if (window.location.search.includes('admin=true')) {
+            showAdminPanel();
+        }
+        
         displayQuestions();
+        loadResults();
     </script>
 </body>
 </html>
