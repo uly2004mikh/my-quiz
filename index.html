@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Интерактивный опросник</title>
+    <title>Опросник</title>
     <style>
         * {
             margin: 0;
@@ -115,6 +115,10 @@
             margin-top: 20px;
         }
         
+        .submit-btn:disabled {
+            opacity: 0.6;
+        }
+        
         .result-card {
             background: white;
             border-radius: 15px;
@@ -136,7 +140,6 @@
             right: 10px;
             font-size: 11px;
             color: rgba(255,255,255,0.3);
-            text-decoration: none;
             cursor: pointer;
         }
         
@@ -149,12 +152,8 @@
         }
         
         @media (max-width: 600px) {
-            .question-text {
-                font-size: 1.1em;
-            }
-            h1 {
-                font-size: 1.5em;
-            }
+            .question-text { font-size: 1.1em; }
+            h1 { font-size: 1.5em; }
         }
     </style>
 </head>
@@ -181,20 +180,10 @@
 
     <script>
         // Защита от копирования
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            return false;
-        });
-        
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p'].includes(e.key)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-                e.preventDefault();
-                return false;
-            }
+            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p'].includes(e.key)) e.preventDefault();
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) e.preventDefault();
         });
         
         // ========== ТВОИ ВОПРОСЫ ==========
@@ -227,8 +216,10 @@
             }
         ];
         
-        // ПАРОЛЬ ДЛЯ АДМИН-ПАНЕЛИ (МОЖЕШЬ ИЗМЕНИТЬ)
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
+        
+        // ========== ТВОЯ ССЫЛКА НА GOOGLE SCRIPT ==========
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwC4cmM3hvhlOFsdlIzxXpBAaiCErqZIoHlKiU270QtcaPhBEmeh-Qvlor4Vt3SoB0X/exec";
         
         let userAnswers = {};
         
@@ -250,7 +241,6 @@
                 const img = document.createElement('img');
                 img.className = 'question-image';
                 img.src = question.image;
-                img.alt = 'Изображение';
                 card.appendChild(img);
                 
                 const optionsDiv = document.createElement('div');
@@ -304,20 +294,41 @@
             };
         }
         
-        function showResults() {
+        async function saveToGoogleSheet(result) {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        timestamp: new Date().toLocaleString('ru-RU'),
+                        score: result.score,
+                        percentage: result.percentage + '%',
+                        answers: JSON.stringify(result.details.map(d => 
+                            `${d.question} → ${d.userAnswer} ${d.isCorrect ? '✓' : '✗ (правильно: ' + d.correctAnswer + ')'}`
+                        ))
+                    })
+                });
+                console.log('✅ Отправлено в Google Sheets');
+                return true;
+            } catch(e) {
+                console.log('❌ Ошибка:', e);
+                return false;
+            }
+        }
+        
+        async function showResults() {
             const res = calculateResults();
             
-            // Сохраняем результат в localStorage
-            let savedResults = localStorage.getItem('quiz_results');
-            let results = savedResults ? JSON.parse(savedResults) : [];
-            results.push({
-                timestamp: new Date().toLocaleString('ru-RU'),
-                ...res
-            });
-            localStorage.setItem('quiz_results', JSON.stringify(results));
+            const btn = document.getElementById('submit-btn');
+            btn.textContent = '💾 Сохранение...';
+            btn.disabled = true;
             
-            // Показываем результат
-            document.getElementById('submit-btn').style.display = 'none';
+            await saveToGoogleSheet(res);
+            
+            btn.style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
             document.getElementById('result-container').innerHTML = `
@@ -325,7 +336,7 @@
                     <h2>🎉 Ваш результат 🎉</h2>
                     <div class="score">${res.correct} / ${res.total}</div>
                     <div class="percentage">${res.percentage}% правильных ответов</div>
-                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен!</p>
+                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен в Google Таблицу!</p>
                     <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer;">🔄 Пройти снова</button>
                 </div>
             `;
@@ -338,187 +349,8 @@
                 return;
             }
             
-            const savedResults = localStorage.getItem('quiz_results');
-            const results = savedResults ? JSON.parse(savedResults) : [];
-            
-            if (results.length === 0) {
-                alert("📭 Пока нет результатов. Пройдите опрос!");
-                return;
-            }
-            
-            // Формируем отчет
-            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\n\n";
-            text += `Всего ответов: ${results.length}\n\n`;
-            
-            results.forEach((res, idx) => {
-                text += "=".repeat(50) + "\n";
-                text += `Результат #${idx + 1}\n`;
-                text += `🕐 Время: ${res.timestamp}\n`;
-                text += `📈 Баллы: ${res.score} (${res.percentage}%)\n`;
-                text += "📝 Ответы:\n";
-                res.details.forEach((d, i) => {
-                    text += `  ${i + 1}. ${d.question}\n`;
-                    text += `     Ответ: ${d.userAnswer}\n`;
-                    text += `     ${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\n`;
-                });
-                text += "\n";
-            });
-            
-            // Открываем новое окно с результатами
-            const adminWindow = window.open();
-            adminWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>📊 Админ-панель</title>
-                    <style>
-                        body {
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            padding: 20px;
-                            background: #f5f5f5;
-                        }
-                        .container {
-                            max-width: 800px;
-                            margin: 0 auto;
-                            background: white;
-                            padding: 20px;
-                            border-radius: 10px;
-                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        }
-                        h1 {
-                            color: #333;
-                            border-bottom: 2px solid #4CAF50;
-                            padding-bottom: 10px;
-                        }
-                        .stats {
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            padding: 15px;
-                            border-radius: 8px;
-                            margin: 15px 0;
-                        }
-                        .result {
-                            background: #f9f9f9;
-                            border-left: 4px solid #4CAF50;
-                            padding: 15px;
-                            margin: 15px 0;
-                            border-radius: 5px;
-                        }
-                        .timestamp {
-                            color: #666;
-                            font-size: 0.9em;
-                        }
-                        .score {
-                            font-weight: bold;
-                            font-size: 1.2em;
-                            margin: 10px 0;
-                        }
-                        .details {
-                            margin-top: 10px;
-                            padding-left: 20px;
-                        }
-                        .correct {
-                            color: #4CAF50;
-                        }
-                        .wrong {
-                            color: #f44336;
-                        }
-                        button {
-                            background: #4CAF50;
-                            color: white;
-                            border: none;
-                            padding: 10px 20px;
-                            border-radius: 5px;
-                            cursor: pointer;
-                            margin: 5px;
-                        }
-                        button:hover {
-                            background: #45a049;
-                        }
-                        .clear-btn {
-                            background: #f44336;
-                        }
-                        .clear-btn:hover {
-                            background: #da190b;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1>📊 Админ-панель опросника</h1>
-                        <div class="stats">
-                            <h2>📈 Статистика</h2>
-                            <p>Всего ответов: ${results.length}</p>
-                            <p>Средний балл: ${(results.reduce((sum, r) => {
-                                const [correct, total] = r.score.split('/');
-                                return sum + (parseInt(correct) / parseInt(total) * 100);
-                            }, 0) / results.length).toFixed(1)}%</p>
-                        </div>
-                        
-                        <div style="margin: 15px 0;">
-                            <button onclick="window.print()">🖨️ Распечатать</button>
-                            <button onclick="copyAllResults()">📋 Скопировать всё</button>
-                            <button onclick="clearAllResults()" class="clear-btn">🗑️ Очистить все</button>
-                        </div>
-                        
-                        <div id="results-container"></div>
-                    </div>
-                    
-                    <script>
-                        const results = ${JSON.stringify(results)};
-                        const container = document.getElementById('results-container');
-                        
-                        results.slice().reverse().forEach((res, idx) => {
-                            const div = document.createElement('div');
-                            div.className = 'result';
-                            div.innerHTML = \`
-                                <div class="timestamp">🕐 \${res.timestamp}</div>
-                                <div class="score">📈 \${res.score} (\${res.percentage}%)</div>
-                                <div class="details">
-                                    <strong>📝 Ответы:</strong><br>
-                                    \${res.details.map((d, i) => 
-                                        \`\${i + 1}. \${d.question}<br>
-                                        &nbsp;&nbsp;Ответ: \${d.userAnswer}<br>
-                                        &nbsp;&nbsp;<span class="\${d.isCorrect ? 'correct' : 'wrong'}">
-                                            \${d.isCorrect ? '✅ Правильно' : '❌ Неправильно (правильно: ' + d.correctAnswer + ')'}
-                                        </span><br>\`
-                                    ).join('')}
-                                </div>
-                            \`;
-                            container.appendChild(div);
-                        });
-                        
-                        function copyAllResults() {
-                            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ\\n\\n";
-                            text += "Всего ответов: " + results.length + "\\n\\n";
-                            results.forEach((res, idx) => {
-                                text += "=".repeat(50) + "\\n";
-                                text += \`Результат #\${idx + 1}\\n\`;
-                                text += \`Время: \${res.timestamp}\\n\`;
-                                text += \`Баллы: \${res.score} (\${res.percentage}%)\\n\`;
-                                text += "Ответы:\\n";
-                                res.details.forEach((d, i) => {
-                                    text += \`  \${i + 1}. \${d.question}\\n\`;
-                                    text += \`     Ответ: \${d.userAnswer}\\n\`;
-                                    text += \`     \${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\\n\`;
-                                });
-                                text += "\\n";
-                            });
-                            navigator.clipboard.writeText(text);
-                            alert('✅ Отчет скопирован!');
-                        }
-                        
-                        function clearAllResults() {
-                            if (confirm('⚠️ Удалить ВСЕ результаты?')) {
-                                localStorage.removeItem('quiz_results');
-                                alert('✅ Все результаты удалены!');
-                                location.reload();
-                            }
-                        }
-                    <\/script>
-                </body>
-                </html>
-            `);
+            alert(`📊 Открой свою Google Таблицу "Опросник"\n\nhttps://docs.google.com/spreadsheets\n\nВсе результаты уже там!`);
+            window.open('https://docs.google.com/spreadsheets', '_blank');
         }
         
         document.getElementById('submit-btn').onclick = () => {
