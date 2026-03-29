@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой опросник</title>
+    <style>
+        /* Стили - делают сайт красивым */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .question-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .question-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .question-text {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .question-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .options {
+            margin: 20px 0;
+        }
+        
+        .option {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .option:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .option.selected {
+            background: #4CAF50;
+            color: white;
+            border-color: #45a049;
+        }
+        
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-top: 20px;
+        }
+        
+        .submit-btn:hover {
+            transform: scale(1.02);
+        }
+        
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .score {
+            font-size: 3em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin: 20px 0;
+        }
+        
+        .percentage {
+            font-size: 1.5em;
+            color: #666;
+        }
+        
+        /* Защита от копирования */
+        .protected {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        img {
+            pointer-events: none;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+        
+        /* Адаптивность для телефонов */
+        @media (max-width: 600px) {
+            .question-text {
+                font-size: 1.1em;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .option {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Опросник</h1>
+        
+        <div id="questions-container">
+            <!-- Здесь будут появляться вопросы -->
+        </div>
+        
+        <button class="submit-btn" id="submit-btn" style="display: none;">📊 Отправить ответы</button>
+        
+        <div id="result-container"></div>
+    </div>
+
+    <script>
+        // ЗАЩИТА ОТ КОПИРОВАНИЯ
+        // Запрещаем контекстное меню (правую кнопку мыши)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            alert('Копирование материалов запрещено!');
+            return false;
+        });
+        
+        // Запрещаем горячие клавиши для копирования
+        document.addEventListener('keydown', function(e) {
+            // Запрещаем Ctrl+C, Ctrl+V, Ctrl+P, F12
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'p')) {
+                e.preventDefault();
+                alert('Копирование запрещено!');
+                return false;
+            }
+            
+            // Запрещаем F12 и Ctrl+Shift+I (инструменты разработчика)
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                e.preventDefault();
+                alert('Инструменты разработчика отключены!');
+                return false;
+            }
+        });
+        
+        // ДАННЫЕ ОПРОСНИКА
+        // Здесь ты можешь добавлять свои вопросы
+        const questions = [
+            {
+                id: 1,
+                text: "Какой язык программирования самый популярный?",
+                image: "https://via.placeholder.com/600x300/667eea/ffffff?text=Python+vs+JavaScript",
+                options: ["Python", "JavaScript", "Java", "C++"],
+                correct: 1  // индекс правильного ответа (0,1,2,3)
+            },
+            {
+                id: 2,
+                text: "Что означает HTML?",
+                image: "https://via.placeholder.com/600x300/764ba2/ffffff?text=HTML+Question",
+                options: [
+                    "Hyper Text Markup Language",
+                    "High Tech Modern Language",
+                    "Hyper Transfer Markup Language",
+                    "Home Tool Markup Language"
+                ],
+                correct: 0
+            },
+            {
+                id: 3,
+                text: "Какой фреймворк используется для Python?",
+                image: "https://via.placeholder.com/600x300/ff6b6b/ffffff?text=Django+vs+Flask",
+                options: ["React", "Vue.js", "Django", "Spring"],
+                correct: 2
+            }
+        ];
+        
+        // Хранилище ответов пользователя
+        let userAnswers = {};
+        
+        // Функция для отображения всех вопросов
+        function displayQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                // Создаем карточку вопроса
+                const questionCard = document.createElement('div');
+                questionCard.className = 'question-card';
+                questionCard.setAttribute('data-question-id', question.id);
+                
+                // Добавляем текст вопроса
+                const questionText = document.createElement('div');
+                questionText.className = 'question-text';
+                questionText.innerHTML = `${index + 1}. ${question.text}`;
+                questionCard.appendChild(questionText);
+                
+                // Добавляем картинку
+                const img = document.createElement('img');
+                img.src = question.image;
+                img.className = 'question-image';
+                img.alt = 'Изображение к вопросу';
+                img.onerror = function() {
+                    this.src = 'https://via.placeholder.com/600x300/cccccc/666666?text=Image+not+found';
+                };
+                questionCard.appendChild(img);
+                
+                // Добавляем варианты ответов
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options';
+                
+                question.options.forEach((option, optIndex) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option';
+                    optionDiv.textContent = option;
+                    optionDiv.setAttribute('data-option-index', optIndex);
+                    
+                    // Добавляем обработчик клика
+                    optionDiv.addEventListener('click', function() {
+                        // Убираем выделение со всех вариантов в этом вопросе
+                        const allOptions = optionsDiv.querySelectorAll('.option');
+                        allOptions.forEach(opt => opt.classList.remove('selected'));
+                        
+                        // Выделяем выбранный вариант
+                        this.classList.add('selected');
+                        
+                        // Сохраняем ответ
+                        userAnswers[question.id] = optIndex;
+                        
+                        // Проверяем, ответил ли пользователь на все вопросы
+                        checkAllQuestionsAnswered();
+                    });
+                    
+                    optionsDiv.appendChild(optionDiv);
+                });
+                
+                questionCard.appendChild(optionsDiv);
+                container.appendChild(questionCard);
+            });
+        }
+        
+        // Проверка, все ли вопросы отвечены
+        function checkAllQuestionsAnswered() {
+            const answeredCount = Object.keys(userAnswers).length;
+            const submitBtn = document.getElementById('submit-btn');
+            
+            if (answeredCount === questions.length) {
+                submitBtn.style.display = 'block';
+                submitBtn.style.animation = 'slideIn 0.5s ease-out';
+            } else {
+                submitBtn.style.display = 'none';
+            }
+        }
+        
+        // Подсчет результатов
+        function calculateResults() {
+            let correctCount = 0;
+            
+            questions.forEach(question => {
+                const userAnswer = userAnswers[question.id];
+                if (userAnswer !== undefined && userAnswer === question.correct) {
+                    correctCount++;
+                }
+            });
+            
+            return {
+                correct: correctCount,
+                total: questions.length,
+                percentage: (correctCount / questions.length * 100).toFixed(1)
+            };
+        }
+        
+        // Отображение результатов
+        function showResults() {
+            const results = calculateResults();
+            const resultContainer = document.getElementById('result-container');
+            
+            // Скрываем вопросы и кнопку отправки
+            document.getElementById('questions-container').style.opacity = '0.5';
+            document.getElementById('questions-container').style.pointerEvents = 'none';
+            document.getElementById('submit-btn').style.display = 'none';
+            
+            // Показываем результаты
+            resultContainer.innerHTML = `
+                <div class="result-card">
+                    <h2>🎉 Ваш результат 🎉</h2>
+                    <div class="score">${results.correct} / ${results.total}</div>
+                    <div class="percentage">Процент правильных ответов: ${results.percentage}%</div>
+                    <div style="margin-top: 20px; color: ${results.percentage >= 70 ? '#4CAF50' : '#ff6b6b'}">
+                        ${getResultMessage(results.percentage)}
+                    </div>
+                    <button onclick="location.reload()" style="
+                        margin-top: 20px;
+                        padding: 10px 20px;
+                        background: #4CAF50;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 16px;
+                    ">🔄 Пройти снова</button>
+                </div>
+            `;
+        }
+        
+        // Сообщение в зависимости от результата
+        function getResultMessage(percentage) {
+            if (percentage >= 90) return "🌟 Отлично! Ты настоящий эксперт! 🌟";
+            if (percentage >= 70) return "👍 Хороший результат! Так держать! 👍";
+            if (percentage >= 50) return "📚 Неплохо, но есть куда расти! 📚";
+            return "💪 Не расстраивайся! Попробуй еще раз! 💪";
+        }
+        
+        // Обработчик кнопки отправки
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            // Проверяем еще раз, все ли вопросы отвечены
+            if (Object.keys(userAnswers).length !== questions.length) {
+                alert('Пожалуйста, ответьте на все вопросы!');
+                return;
+            }
+            
+            // Показываем результаты
+            showResults();
+        });
+        
+        // Запускаем отображение вопросов при загрузке страницы
+        displayQuestions();
+        
+        // Добавляем защиту от выделения текста
+        document.querySelectorAll('.question-card, .option').forEach(el => {
+            el.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+        });
+        
+        // Защита от сохранения страницы
+        window.addEventListener('beforeunload', function(e) {
+            // Небольшая хитрость - если пользователь пытается закрыть страницу до отправки
+            if (Object.keys(userAnswers).length > 0 && Object.keys(userAnswers).length < questions.length) {
+                e.preventDefault();
+                e.returnValue = 'Вы еще не завершили опрос. Вы уверены?';
+            }
+        });
+        
+        console.log('Опросник загружен!');
+    </script>
+</body>
+</html>
