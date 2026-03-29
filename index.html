@@ -10,7 +10,6 @@
             padding: 0;
             box-sizing: border-box;
             user-select: none;
-            -webkit-user-select: none;
         }
         
         body {
@@ -38,7 +37,6 @@
             height: 100%;
             width: 0%;
             transition: width 0.3s ease;
-            border-radius: 10px;
         }
         
         .stats {
@@ -53,7 +51,6 @@
             color: white;
             margin-bottom: 20px;
             font-size: 2em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
         .question-card {
@@ -97,13 +94,11 @@
         
         .option:hover {
             background: #e9ecef;
-            transform: translateX(3px);
         }
         
         .option.selected {
             background: #4CAF50;
             color: white;
-            border-color: #45a049;
         }
         
         .submit-btn {
@@ -118,10 +113,6 @@
             border-radius: 10px;
             cursor: pointer;
             margin-top: 20px;
-        }
-        
-        .submit-btn:hover {
-            opacity: 0.9;
         }
         
         .result-card {
@@ -146,10 +137,7 @@
             font-size: 11px;
             color: rgba(255,255,255,0.3);
             text-decoration: none;
-        }
-        
-        .admin-link:hover {
-            color: rgba(255,255,255,0.6);
+            cursor: pointer;
         }
         
         img {
@@ -162,9 +150,6 @@
             }
             h1 {
                 font-size: 1.5em;
-            }
-            .option {
-                padding: 10px;
             }
         }
     </style>
@@ -188,7 +173,7 @@
         <div id="result-container"></div>
     </div>
     
-    <a href="#" onclick="showAdminPanel()" class="admin-link">🔒 Админ-панель</a>
+    <div onclick="showAdminPanel()" class="admin-link">🔒 Админ-панель</div>
 
     <script>
         // Защита от копирования
@@ -199,10 +184,6 @@
         
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p'].includes(e.key)) {
-                e.preventDefault();
-                return false;
-            }
-            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
                 e.preventDefault();
                 return false;
             }
@@ -238,13 +219,10 @@
             }
         ];
         
-        // Ключ для админ-панели (ИЗМЕНИ НА СВОЙ ПАРОЛЬ)
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
-        
-        // Хранилище результатов
         let results = [];
+        let userAnswers = {};
         
-        // Загрузка сохраненных результатов
         function loadResults() {
             const saved = localStorage.getItem('quiz_results');
             if (saved) {
@@ -252,223 +230,54 @@
             }
         }
         
-        // Сохранение результата
         function saveResult(resultData) {
             results.push({
                 timestamp: new Date().toLocaleString('ru-RU'),
                 ...resultData
             });
             localStorage.setItem('quiz_results', JSON.stringify(results));
-            console.log('Результат сохранен! Всего результатов:', results.length);
         }
         
-        // Показать админ-панель
         function showAdminPanel() {
             const password = prompt("🔐 Введите пароль администратора:");
             if (password !== ADMIN_PASSWORD) {
                 alert("❌ Неверный пароль!");
-                return false;
+                return;
             }
             
             loadResults();
             
             if (results.length === 0) {
-                alert("📭 Пока нет результатов. Пройдите опрос, чтобы увидеть данные!");
+                alert("📭 Пока нет результатов");
                 return;
             }
             
-            // Открываем новое окно с результатами
-            const adminWindow = window.open();
-            adminWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>📊 Админ-панель опросника</title>
-                    <style>
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
-                        }
-                        body {
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            padding: 20px;
-                            background: #f5f5f5;
-                        }
-                        h1 {
-                            color: #333;
-                            margin-bottom: 10px;
-                        }
-                        .stats {
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            padding: 20px;
-                            border-radius: 10px;
-                            margin-bottom: 20px;
-                        }
-                        .stats h2 {
-                            font-size: 2em;
-                            margin-bottom: 10px;
-                        }
-                        .result-item {
-                            background: white;
-                            border-radius: 10px;
-                            padding: 20px;
-                            margin-bottom: 20px;
-                            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                            border-left: 4px solid #4CAF50;
-                        }
-                        .result-header {
-                            font-size: 1.1em;
-                            font-weight: bold;
-                            color: #4CAF50;
-                            margin-bottom: 10px;
-                            padding-bottom: 10px;
-                            border-bottom: 1px solid #eee;
-                        }
-                        .result-score {
-                            background: #f0f0f0;
-                            padding: 10px;
-                            border-radius: 5px;
-                            margin: 10px 0;
-                            font-weight: bold;
-                        }
-                        .answer-detail {
-                            margin: 8px 0;
-                            padding: 8px;
-                            background: #f9f9f9;
-                            border-radius: 5px;
-                        }
-                        .correct {
-                            color: #4CAF50;
-                            font-weight: bold;
-                        }
-                        .wrong {
-                            color: #f44336;
-                            font-weight: bold;
-                        }
-                        button {
-                            background: #4CAF50;
-                            color: white;
-                            border: none;
-                            padding: 10px 20px;
-                            border-radius: 5px;
-                            cursor: pointer;
-                            margin: 10px 5px;
-                            font-size: 14px;
-                        }
-                        button:hover {
-                            background: #45a049;
-                        }
-                        .clear-btn {
-                            background: #f44336;
-                        }
-                        .clear-btn:hover {
-                            background: #da190b;
-                        }
-                        hr {
-                            margin: 20px 0;
-                        }
-                        .timestamp {
-                            color: #666;
-                            font-size: 0.9em;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>📊 Админ-панель опросника</h1>
-                    
-                    <div class="stats">
-                        <h2>📈 Статистика</h2>
-                        <p>Всего ответов: <strong>${results.length}</strong></p>
-                        <p>Средний балл: <strong>${(results.reduce((sum, r) => {
-                            const [correct, total] = r.score.split('/');
-                            return sum + (parseInt(correct) / parseInt(total) * 100);
-                        }, 0) / results.length).toFixed(1)}%</strong></p>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <button onclick="window.print()">🖨️ Распечатать</button>
-                        <button onclick="copyAllResults()">📋 Скопировать всё</button>
-                        <button onclick="clearAllResults()" class="clear-btn">🗑️ Очистить все результаты</button>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div id="results-container"></div>
-                    
-                    <script>
-                        const results = ${JSON.stringify(results)};
-                        const container = document.getElementById('results-container');
-                        
-                        if (results.length === 0) {
-                            container.innerHTML = '<p>📭 Нет результатов</p>';
-                        } else {
-                            results.forEach((res, idx) => {
-                                const div = document.createElement('div');
-                                div.className = 'result-item';
-                                div.innerHTML = \`
-                                    <div class="result-header">
-                                        🏆 Результат #\${results.length - idx}
-                                    </div>
-                                    <div class="timestamp">📅 \${res.timestamp}</div>
-                                    <div class="result-score">
-                                        📈 Баллы: \${res.score} (\${res.percentage}%)
-                                    </div>
-                                    <div style="margin-top: 10px;">
-                                        <strong>📝 Детальные ответы:</strong>
-                                        <div style="margin-top: 10px;">
-                                            \${res.details.map((d, i) => \`
-                                                <div class="answer-detail">
-                                                    <strong>\${i + 1}. \${d.question}</strong><br>
-                                                    &nbsp;&nbsp;Ответ: \${d.userAnswer}<br>
-                                                    &nbsp;&nbsp;<span class="\${d.isCorrect ? 'correct' : 'wrong'}">
-                                                        \${d.isCorrect ? '✅ Правильно' : '❌ Неправильно (правильно: ' + d.correctAnswer + ')'}
-                                                    </span>
-                                                </div>
-                                            \`).join('')}
-                                        </div>
-                                    </div>
-                                \`;
-                                container.appendChild(div);
-                            });
-                        }
-                        
-                        function copyAllResults() {
-                            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\\n\\n";
-                            text += "Всего ответов: " + results.length + "\\n\\n";
-                            results.forEach((res, idx) => {
-                                text += "=".repeat(50) + "\\n";
-                                text += `Результат #\${results.length - idx}\\n`;
-                                text += `Время: \${res.timestamp}\\n`;
-                                text += `Баллы: \${res.score} (\${res.percentage}%)\\n`;
-                                text += "Ответы:\\n";
-                                res.details.forEach((d, i) => {
-                                    text += `  \${i + 1}. \${d.question}\\n`;
-                                    text += `     Ответ: \${d.userAnswer}\\n`;
-                                    text += `     \${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\\n`;
-                                });
-                                text += "\\n";
-                            });
-                            navigator.clipboard.writeText(text);
-                            alert('✅ Отчет скопирован в буфер обмена!');
-                        }
-                        
-                        function clearAllResults() {
-                            if (confirm('⚠️ ВНИМАНИЕ! Это действие удалит ВСЕ результаты. Вы уверены?')) {
-                                localStorage.removeItem('quiz_results');
-                                alert('✅ Все результаты удалены! Обновите страницу.');
-                                location.reload();
-                            }
-                        }
-                    </script>
-                </body>
+            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\n\n";
+            text += `Всего ответов: ${results.length}\n\n`;
+            
+            results.forEach((res, idx) => {
+                text += "=".repeat(50) + "\n";
+                text += `Результат #${idx + 1}\n`;
+                text += `Время: ${res.timestamp}\n`;
+                text += `Баллы: ${res.score} (${res.percentage}%)\n`;
+                text += "Ответы:\n";
+                res.details.forEach((d, i) => {
+                    text += `  ${i + 1}. ${d.question}\n`;
+                    text += `     Ответ: ${d.userAnswer}\n`;
+                    text += `     ${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\n`;
+                });
+                text += "\n";
+            });
+            
+            const newWindow = window.open();
+            newWindow.document.write(`
+                <html><head><title>Результаты</title></head>
+                <body style="font-family: monospace; padding: 20px; white-space: pre-wrap;">${text.replace(/\n/g, '<br>')}</body>
                 </html>
             `);
         }
         
         document.getElementById('total-count').textContent = questions.length;
-        let userAnswers = {};
         
         function displayQuestions() {
             const container = document.getElementById('questions-container');
@@ -486,7 +295,6 @@
                 const img = document.createElement('img');
                 img.className = 'question-image';
                 img.src = question.image;
-                img.alt = 'Изображение';
                 card.appendChild(img);
                 
                 const optionsDiv = document.createElement('div');
@@ -542,11 +350,8 @@
         
         function showResults() {
             const res = calculateResults();
-            
-            // Сохраняем результат
             saveResult(res);
             
-            // Показываем результат
             document.getElementById('submit-btn').style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
@@ -569,12 +374,8 @@
             showResults();
         };
         
-        // Загружаем сохраненные результаты при старте
         loadResults();
         displayQuestions();
-        
-        // Выводим в консоль для отладки
-        console.log('Опросник загружен! Чтобы посмотреть результаты, нажмите на 🔒 Админ-панель внизу справа');
     </script>
 </body>
 </html>
