@@ -250,8 +250,12 @@
         
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
         
-        // ========== ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ GOOGLE SCRIPT ==========
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/ТВОЯ_ССЫЛКА/exec";
+        // ========== ТВОЯ ССЫЛКА ИЗ GOOGLE SCRIPT ==========
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ6BueyudyoJ5Uf9ySn-4wolobxQq-qgQIR4KDsWoOf9sbREigjiPW5kj_7yk_tqrA/exec";
+        
+        // ID твоей Google Таблицы (нужно добавить!)
+        // Открой таблицу и скопируй ID из адресной строки
+        const SPREADSHEET_ID = "ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ";
         
         let userAnswers = {};
         
@@ -386,10 +390,8 @@
                 return;
             }
             
-            alert(`📊 Ссылка на Google Таблицу с результатами:\n\nhttps://docs.google.com/spreadsheets/d/ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ/edit\n\nОткрой эту ссылку, чтобы посмотреть все ответы!`);
-            
             // Открываем таблицу в новой вкладке
-            window.open('https://docs.google.com/spreadsheets/d/ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ/edit');
+            window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`);
         }
         
         document.getElementById('submit-btn').onclick = () => {
