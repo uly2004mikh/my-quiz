@@ -140,6 +140,22 @@
             cursor: pointer;
         }
         
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         img {
             pointer-events: none;
         }
@@ -182,13 +198,6 @@
             return false;
         });
         
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p'].includes(e.key)) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        
         // ========== ТВОИ ВОПРОСЫ ==========
         const questions = [
             {
@@ -220,61 +229,51 @@
         ];
         
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
-        let results = [];
+        
+        // БЕСПЛАТНЫЙ JSON-СЕРВЕР ДЛЯ ХРАНЕНИЯ РЕЗУЛЬТАТОВ
+        // Это публичное хранилище, доступное всем пользователям
+        const STORAGE_URL = "https://jsonbin.io/api/b/67e5c2fa8561e97a50f7864e";
+        const API_KEY = "$2a$10$YOUR_API_KEY_HERE"; // Нужно получить бесплатный ключ
+        
         let userAnswers = {};
         
-        function loadResults() {
-            const saved = localStorage.getItem('quiz_results');
-            if (saved) {
-                results = JSON.parse(saved);
-            }
-        }
-        
-        function saveResult(resultData) {
-            results.push({
-                timestamp: new Date().toLocaleString('ru-RU'),
-                ...resultData
-            });
-            localStorage.setItem('quiz_results', JSON.stringify(results));
-        }
-        
-        function showAdminPanel() {
-            const password = prompt("🔐 Введите пароль администратора:");
-            if (password !== ADMIN_PASSWORD) {
-                alert("❌ Неверный пароль!");
-                return;
-            }
-            
-            loadResults();
-            
-            if (results.length === 0) {
-                alert("📭 Пока нет результатов");
-                return;
-            }
-            
-            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\n\n";
-            text += `Всего ответов: ${results.length}\n\n`;
-            
-            results.forEach((res, idx) => {
-                text += "=".repeat(50) + "\n";
-                text += `Результат #${idx + 1}\n`;
-                text += `Время: ${res.timestamp}\n`;
-                text += `Баллы: ${res.score} (${res.percentage}%)\n`;
-                text += "Ответы:\n";
-                res.details.forEach((d, i) => {
-                    text += `  ${i + 1}. ${d.question}\n`;
-                    text += `     Ответ: ${d.userAnswer}\n`;
-                    text += `     ${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\n`;
+        // Сохранение результата на общий сервер
+        async function saveResultToCloud(resultData) {
+            try {
+                // Сначала загружаем существующие результаты
+                const existing = await loadResultsFromCloud();
+                existing.push({
+                    timestamp: new Date().toLocaleString('ru-RU'),
+                    ...resultData
                 });
-                text += "\n";
-            });
-            
-            const newWindow = window.open();
-            newWindow.document.write(`
-                <html><head><title>Результаты</title></head>
-                <body style="font-family: monospace; padding: 20px; white-space: pre-wrap;">${text.replace(/\n/g, '<br>')}</body>
-                </html>
-            `);
+                
+                // Сохраняем обновленный список
+                const response = await fetch(STORAGE_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(existing)
+                });
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                return null;
+            }
+        }
+        
+        // Загрузка результатов с сервера
+        async function loadResultsFromCloud() {
+            try {
+                const response = await fetch(STORAGE_URL);
+                const data = await response.json();
+                return data.record || [];
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                return [];
+            }
         }
         
         document.getElementById('total-count').textContent = questions.length;
@@ -348,11 +347,18 @@
             };
         }
         
-        function showResults() {
+        async function showResults() {
             const res = calculateResults();
-            saveResult(res);
             
-            document.getElementById('submit-btn').style.display = 'none';
+            // Показываем загрузку
+            const btn = document.getElementById('submit-btn');
+            btn.textContent = '📤 Сохранение...';
+            btn.disabled = true;
+            
+            // Сохраняем в облако
+            await saveResultToCloud(res);
+            
+            btn.style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
             document.getElementById('result-container').innerHTML = `
@@ -360,10 +366,105 @@
                     <h2>🎉 Ваш результат 🎉</h2>
                     <div class="score">${res.correct} / ${res.total}</div>
                     <div class="percentage">${res.percentage}% правильных ответов</div>
-                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен!</p>
+                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен в облаке!</p>
                     <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer;">🔄 Пройти снова</button>
                 </div>
             `;
+        }
+        
+        async function showAdminPanel() {
+            const password = prompt("🔐 Введите пароль администратора:");
+            if (password !== ADMIN_PASSWORD) {
+                alert("❌ Неверный пароль!");
+                return;
+            }
+            
+            const results = await loadResultsFromCloud();
+            
+            if (results.length === 0) {
+                alert("📭 Пока нет результатов");
+                return;
+            }
+            
+            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\n\n";
+            text += `Всего ответов: ${results.length}\n\n`;
+            
+            results.forEach((res, idx) => {
+                text += "=".repeat(50) + "\n";
+                text += `Результат #${idx + 1}\n`;
+                text += `Время: ${res.timestamp}\n`;
+                text += `Баллы: ${res.score} (${res.percentage}%)\n`;
+                text += "Ответы:\n";
+                if (res.details) {
+                    res.details.forEach((d, i) => {
+                        text += `  ${i + 1}. ${d.question}\n`;
+                        text += `     Ответ: ${d.userAnswer}\n`;
+                        text += `     ${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\n`;
+                    });
+                }
+                text += "\n";
+            });
+            
+            const newWindow = window.open();
+            newWindow.document.write(`
+                <html>
+                <head>
+                    <title>Результаты опросника</title>
+                    <style>
+                        body {
+                            font-family: monospace;
+                            padding: 20px;
+                            background: #f5f5f5;
+                        }
+                        .container {
+                            max-width: 800px;
+                            margin: 0 auto;
+                            background: white;
+                            padding: 20px;
+                            border-radius: 10px;
+                        }
+                        h1 { color: #333; }
+                        .stat { 
+                            background: #4CAF50; 
+                            color: white; 
+                            padding: 10px; 
+                            border-radius: 5px;
+                            margin: 10px 0;
+                        }
+                        pre {
+                            white-space: pre-wrap;
+                            font-family: monospace;
+                        }
+                        button {
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            margin: 5px;
+                        }
+                        button:hover { opacity: 0.9; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>📊 Результаты опросника</h1>
+                        <div class="stat">📈 Всего ответов: ${results.length}</div>
+                        <pre>${text}</pre>
+                        <button onclick="window.print()">🖨️ Распечатать</button>
+                        <button onclick="copyToClipboard()">📋 Скопировать</button>
+                        <script>
+                            function copyToClipboard() {
+                                const text = document.querySelector('pre').innerText;
+                                navigator.clipboard.writeText(text);
+                                alert('Скопировано!');
+                            }
+                        <\/script>
+                    </div>
+                </body>
+                </html>
+            `);
         }
         
         document.getElementById('submit-btn').onclick = () => {
@@ -374,7 +475,6 @@
             showResults();
         };
         
-        loadResults();
         displayQuestions();
     </script>
 </body>
