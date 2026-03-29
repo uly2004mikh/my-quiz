@@ -115,6 +115,11 @@
             margin-top: 20px;
         }
         
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .result-card {
             background: white;
             border-radius: 15px;
@@ -138,6 +143,10 @@
             color: rgba(255,255,255,0.3);
             text-decoration: none;
             cursor: pointer;
+        }
+        
+        .admin-link:hover {
+            color: rgba(255,255,255,0.6);
         }
         
         .loading {
@@ -198,6 +207,17 @@
             return false;
         });
         
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p'].includes(e.key)) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
         // ========== ТВОИ ВОПРОСЫ ==========
         const questions = [
             {
@@ -230,49 +250,33 @@
         
         const ADMIN_PASSWORD = "мойсекретныйпароль2024";
         
-        // БЕСПЛАТНЫЙ JSON-СЕРВЕР ДЛЯ ХРАНЕНИЯ РЕЗУЛЬТАТОВ
-        // Это публичное хранилище, доступное всем пользователям
-        const STORAGE_URL = "https://jsonbin.io/api/b/67e5c2fa8561e97a50f7864e";
-        const API_KEY = "$2a$10$YOUR_API_KEY_HERE"; // Нужно получить бесплатный ключ
+        // ========== ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ GOOGLE SCRIPT ==========
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/ТВОЯ_ССЫЛКА/exec";
         
         let userAnswers = {};
         
-        // Сохранение результата на общий сервер
-        async function saveResultToCloud(resultData) {
+        // Сохранение в Google Sheets
+        async function saveToGoogleSheets(resultData) {
             try {
-                // Сначала загружаем существующие результаты
-                const existing = await loadResultsFromCloud();
-                existing.push({
-                    timestamp: new Date().toLocaleString('ru-RU'),
-                    ...resultData
-                });
-                
-                // Сохраняем обновленный список
-                const response = await fetch(STORAGE_URL, {
-                    method: 'PUT',
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Master-Key': API_KEY
                     },
-                    body: JSON.stringify(existing)
+                    body: JSON.stringify({
+                        timestamp: new Date().toLocaleString('ru-RU'),
+                        score: resultData.score,
+                        percentage: resultData.percentage + '%',
+                        answers: JSON.stringify(resultData.details)
+                    })
                 });
                 
-                return await response.json();
+                console.log('✅ Результат отправлен в Google Sheets');
+                return true;
             } catch (error) {
-                console.error('Ошибка сохранения:', error);
-                return null;
-            }
-        }
-        
-        // Загрузка результатов с сервера
-        async function loadResultsFromCloud() {
-            try {
-                const response = await fetch(STORAGE_URL);
-                const data = await response.json();
-                return data.record || [];
-            } catch (error) {
-                console.error('Ошибка загрузки:', error);
-                return [];
+                console.error('❌ Ошибка отправки:', error);
+                return false;
             }
         }
         
@@ -294,6 +298,7 @@
                 const img = document.createElement('img');
                 img.className = 'question-image';
                 img.src = question.image;
+                img.alt = 'Изображение';
                 card.appendChild(img);
                 
                 const optionsDiv = document.createElement('div');
@@ -352,12 +357,14 @@
             
             // Показываем загрузку
             const btn = document.getElementById('submit-btn');
+            const originalText = btn.textContent;
             btn.textContent = '📤 Сохранение...';
             btn.disabled = true;
             
-            // Сохраняем в облако
-            await saveResultToCloud(res);
+            // Сохраняем в Google Sheets
+            await saveToGoogleSheets(res);
             
+            // Показываем результат
             btn.style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
             
@@ -366,105 +373,23 @@
                     <h2>🎉 Ваш результат 🎉</h2>
                     <div class="score">${res.correct} / ${res.total}</div>
                     <div class="percentage">${res.percentage}% правильных ответов</div>
-                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен в облаке!</p>
+                    <p style="margin: 15px 0; color: #4CAF50;">✅ Результат сохранен в Google Таблице!</p>
                     <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer;">🔄 Пройти снова</button>
                 </div>
             `;
         }
         
-        async function showAdminPanel() {
+        function showAdminPanel() {
             const password = prompt("🔐 Введите пароль администратора:");
             if (password !== ADMIN_PASSWORD) {
                 alert("❌ Неверный пароль!");
                 return;
             }
             
-            const results = await loadResultsFromCloud();
+            alert(`📊 Ссылка на Google Таблицу с результатами:\n\nhttps://docs.google.com/spreadsheets/d/ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ/edit\n\nОткрой эту ссылку, чтобы посмотреть все ответы!`);
             
-            if (results.length === 0) {
-                alert("📭 Пока нет результатов");
-                return;
-            }
-            
-            let text = "📊 ОТЧЕТ ПО ОПРОСНИКУ 📊\n\n";
-            text += `Всего ответов: ${results.length}\n\n`;
-            
-            results.forEach((res, idx) => {
-                text += "=".repeat(50) + "\n";
-                text += `Результат #${idx + 1}\n`;
-                text += `Время: ${res.timestamp}\n`;
-                text += `Баллы: ${res.score} (${res.percentage}%)\n`;
-                text += "Ответы:\n";
-                if (res.details) {
-                    res.details.forEach((d, i) => {
-                        text += `  ${i + 1}. ${d.question}\n`;
-                        text += `     Ответ: ${d.userAnswer}\n`;
-                        text += `     ${d.isCorrect ? '✓ Правильно' : '✗ Неправильно (правильно: ' + d.correctAnswer + ')'}\n`;
-                    });
-                }
-                text += "\n";
-            });
-            
-            const newWindow = window.open();
-            newWindow.document.write(`
-                <html>
-                <head>
-                    <title>Результаты опросника</title>
-                    <style>
-                        body {
-                            font-family: monospace;
-                            padding: 20px;
-                            background: #f5f5f5;
-                        }
-                        .container {
-                            max-width: 800px;
-                            margin: 0 auto;
-                            background: white;
-                            padding: 20px;
-                            border-radius: 10px;
-                        }
-                        h1 { color: #333; }
-                        .stat { 
-                            background: #4CAF50; 
-                            color: white; 
-                            padding: 10px; 
-                            border-radius: 5px;
-                            margin: 10px 0;
-                        }
-                        pre {
-                            white-space: pre-wrap;
-                            font-family: monospace;
-                        }
-                        button {
-                            background: #4CAF50;
-                            color: white;
-                            border: none;
-                            padding: 10px 20px;
-                            border-radius: 5px;
-                            cursor: pointer;
-                            margin: 5px;
-                        }
-                        button:hover { opacity: 0.9; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1>📊 Результаты опросника</h1>
-                        <div class="stat">📈 Всего ответов: ${results.length}</div>
-                        <pre>${text}</pre>
-                        <button onclick="window.print()">🖨️ Распечатать</button>
-                        <button onclick="copyToClipboard()">📋 Скопировать</button>
-                        <script>
-                            function copyToClipboard() {
-                                const text = document.querySelector('pre').innerText;
-                                navigator.clipboard.writeText(text);
-                                alert('Скопировано!');
-                            }
-                        <\/script>
-                    </div>
-                </body>
-                </html>
-            `);
+            // Открываем таблицу в новой вкладке
+            window.open('https://docs.google.com/spreadsheets/d/ВСТАВЬ_ID_ТВОЕЙ_ТАБЛИЦЫ/edit');
         }
         
         document.getElementById('submit-btn').onclick = () => {
