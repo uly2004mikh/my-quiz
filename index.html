@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Интерактивный опросник</title>
     <style>
+        /* Весь твой CSS остается таким же, как был */
         * {
             margin: 0;
             padding: 0;
@@ -139,6 +140,22 @@
             margin: 15px 0;
         }
         
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         img {
             pointer-events: none;
         }
@@ -176,7 +193,7 @@
     </div>
 
     <script>
-        // Защита от копирования
+        // ЗАЩИТА ОТ КОПИРОВАНИЯ
         document.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             return false;
@@ -193,7 +210,7 @@
             }
         });
         
-        // ВОПРОСЫ - ИЗМЕНИ ПОД СЕБЯ!
+        // ========== ТВОИ ВОПРОСЫ ==========
         const questions = [
             {
                 id: 1,
@@ -222,6 +239,10 @@
                 correct: 2
             }
         ];
+        
+        // ========== НАСТРОЙКИ ДЛЯ GOOGLE SHEETS ==========
+        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ GOOGLE FORMS
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/ТВОЙ_ИД/exec";
         
         document.getElementById('total-count').textContent = questions.length;
         let userAnswers = {};
@@ -276,22 +297,74 @@
         
         function calculateResults() {
             let correct = 0;
+            let answers = [];
             questions.forEach(q => {
-                if (userAnswers[q.id] === q.correct) correct++;
+                const isCorrect = userAnswers[q.id] === q.correct;
+                if (isCorrect) correct++;
+                answers.push({
+                    question: q.text,
+                    userAnswer: q.options[userAnswers[q.id]] || "Не отвечен",
+                    correctAnswer: q.options[q.correct],
+                    isCorrect: isCorrect
+                });
             });
-            return { correct, total: questions.length, percent: (correct / questions.length * 100).toFixed(1) };
+            return { 
+                correct, 
+                total: questions.length, 
+                percent: (correct / questions.length * 100).toFixed(1),
+                answers: answers
+            };
         }
         
-        function showResults() {
+        // ОТПРАВКА В GOOGLE SHEETS
+        async function saveToGoogleSheets(result) {
+            try {
+                const data = {
+                    timestamp: new Date().toLocaleString('ru-RU'),
+                    score: `${result.correct}/${result.total}`,
+                    percentage: result.percent + '%',
+                    answers: JSON.stringify(result.answers)
+                };
+                
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('Результаты сохранены!');
+                return true;
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                return false;
+            }
+        }
+        
+        async function showResults() {
             const res = calculateResults();
+            
+            // Показываем загрузку
+            const submitBtn = document.getElementById('submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '📤 Сохранение результатов...';
+            submitBtn.disabled = true;
+            
+            // Сохраняем в Google Таблицу
+            await saveToGoogleSheets(res);
+            
+            // Восстанавливаем кнопку и показываем результат
+            submitBtn.style.display = 'none';
             document.getElementById('questions-container').style.opacity = '0.6';
-            document.getElementById('submit-btn').style.display = 'none';
             
             document.getElementById('result-container').innerHTML = `
                 <div class="result-card">
-                    <h2>🎉 Результат 🎉</h2>
+                    <h2>🎉 Ваш результат 🎉</h2>
                     <div class="score">${res.correct} / ${res.total}</div>
                     <div class="percentage">${res.percent}% правильных ответов</div>
+                    <p style="margin: 15px 0; color: #666;">✨ Результат сохранен! ✨</p>
                     <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:5px;cursor:pointer;">🔄 Пройти снова</button>
                 </div>
             `;
